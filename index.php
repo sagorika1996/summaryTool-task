@@ -25,5 +25,69 @@
         </div>
       </form>
     </div>
+
+    <?php
+      function getCount() {
+        if(isset($_POST['searchTerm']))  { 
+          $ts_pw = posix_getpwuid(posix_getuid());
+          $ts_mycnf = parse_ini_file($ts_pw['dir'] . "/replica.my.cnf");
+
+          $mysqli = new mysqli('enwiki.labsdb', $ts_mycnf['user'], $ts_mycnf['password'], 'enwiki_p');
+
+          if ($mysqli->connect_error) {
+            echo "Connection failed: " . $mysqli->connect_error;
+            return;
+          }
+
+          $username = $_POST["searchTerm"];
+
+          $sql = $mysqli->prepare("SELECT user_id FROM user WHERE user_name = ? limit 1");
+          $sql->bind_param('s', $username);
+          $sql->execute();
+          $res = $sql->get_result();
+
+          if ($res == false) {
+            echo 'The query failed.';
+            return;
+          }
+
+          if($res->num_rows == 0) {
+            echo "<div class='panel panel-default col-xs-4' > <div class='panel-body'> Username doesn't exists </div></div>";
+            return;
+          }
+
+          $userid = $res->fetch_assoc()["user_id"];
+
+          $cnt = 0;
+          
+          if(!file_exists("data.txt")) {
+            echo "File not found";
+            return;
+          } 
+          else {
+            $myfile = fopen("data.txt", "r");
+          }
+          
+          while(!feof($myfile)) {
+            $str = fgets($myfile);
+            $text = explode("=", $str);
+            if($text[0] == $userid) {
+              $cnt = $text[1];
+              break;
+            }
+          }
+
+          fclose($myfile);
+
+          echo "<div class='panel panel-default col-xs-4' > <div class='panel-body'> Username: ".$username."<br>Userid: ".$userid."<br>Number of featured articles where the user is among the top 10 editors: ".$cnt."</div></div>"; 
+
+          $mysqli->close();
+        }
+          return;
+      }
+
+      getCount();
+    ?>
+    
   </body>
 </html>
